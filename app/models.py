@@ -22,13 +22,12 @@ class Events(models.Model):
     description = models.CharField(max_length=100)
     timestamp = models.DateTimeField(blank=False, editable=True)
     severity = models.CharField(max_length=10)
-    acked = models.BooleanField(default=False)
-    acked_by = models.ForeignKey(AppUsers, default=None)
 
 
 class MacToUser(models.Model):
     mac_address = models.CharField(max_length=17)
     user = models.ForeignKey(AppUsers, blank=False)
+
 
 class UnreadEvents(models.Model):
     event = models.ForeignKey(Events)
