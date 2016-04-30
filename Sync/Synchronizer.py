@@ -2,6 +2,7 @@ import socket
 import sqlite3
 import datetime
 import struct
+import sys
 
 BUFFER_SIZE = 1024
 
@@ -37,21 +38,48 @@ class ArduinoListener(object):
             data, address = self.__sock.recvfrom(BUFFER_SIZE)
             data = struct.unpack('B', data)[0]
             if data:
-                self._handle_alert(data)
+                self.__handle_alert(data)
 
-    def _handle_alert(self, data):
+    def __handle_alert(self, data):
         timestamp = datetime.datetime.now()
-        insertion_line = 'INSERT INTO Events VALUES (?, ?, ?, ?)'
+        insertion_line = 'INSERT INTO app_events VALUES (?, ?, ?, ?, ?)'
         if data == 1:
-            print 'updating 1'
-            self.__cursor.execute(insertion_line, 'Breach', 'Asset has been opened while alarm was armed', timestamp,
-                                  'Critical')
+            self.__cursor.execute(insertion_line, (None, 'Breach', 'Asset has been opened while alarm was armed',
+                                                   timestamp, 'Critical'))
         elif data == 2:
-            print 'updating 2'
-            self.__cursor.execute(insertion_line, 'Door knock',
-                                  'Vibrations on the door had been detected while alarm was armed', timestamp,
-                                  'Information')
+            self.__cursor.execute(insertion_line, (None, 'Door knock',
+                                                   'Vibrations on the door had been detected while alarm was armed',
+                                                   timestamp, 'Information'))
         self.__db_connection.commit()
+        self.__mark_last_event_as_unerad()
+
+    def __mark_last_event_as_unerad(self):
+        last_event_id = self.__cursor.execute('SELECT id FROM app_events ORDER BY id DESC LIMIT 1').fetchone()[0]
+        users_list = self.__cursor.execute('SELECT UID FROM app_appusers').fetchall()
+
+        for user in users_list:
+            self.__cursor.execute('INSERT INTO app_unreadevents VALUES (?, ?, ?)', (None, last_event_id, user[0]))
+        self.__db_connection.commit()
+
+
+def parse_configuration_file():
+    try:
+        conf_file = open('./sync.conf', 'rb')
+    except:
+        print 'sync.conf is missing'
+        sys.exit(-1)
+
+    configuration = conf_file.read()
+    conf_file.close()
+    configuration_fields = {}
+
+    for line in configuration:
+        if not line:
+            pass
+        key = line.split('=')[0]
+        value = line.split('=')[1]
+        configuration_fields[key] = value
+    return configuration_fields
 
 listener = ArduinoListener()
 listener.run_server()
