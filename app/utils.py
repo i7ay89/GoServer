@@ -8,6 +8,7 @@ import json
 cookie_length = 25
 secret = 'So2>QmjNktdi^u{}ujxAo3^dN'
 
+
 def rand_cookie():
     random.seed()
     valid_char = False
