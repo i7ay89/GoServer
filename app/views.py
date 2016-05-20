@@ -1,7 +1,7 @@
 from django.http import HttpResponse
 from django.http import HttpResponseForbidden
 from django.http import HttpResponseBadRequest
-from .models import AppUsers, Permissions, MacToUser, UnreadEvents
+from .models import AppUsers, Permissions, MacToUser, UnreadEvents, Events
 from hashlib import md5
 from utils import secret, rand_cookie, to_json, return_success
 
@@ -123,6 +123,29 @@ def sync(request):
     return HttpResponse(to_json({'events': json_response}))
 
 
+def get_last_events(request):
+    '''
+    if not is_android_client(request):
+        return HttpResponseForbidden('Not an android client')
+    if not request.method == 'GET':
+        return HttpResponseBadRequest('Not a GET-sync-request')
+        #  cookie = '4#2HU^Ke~x^88Y)gukF*v#&Z('           #  User for debug. delete afterwards
+    cookie = request.COOKIES.get('auth', None)
+    user_is_authenticated, reason = check_user_authentication(cookie)
+    if not user_is_authenticated:
+        return HttpResponseForbidden(reason)
+    '''
+    events = Events.objects.all()
+    if len(events) > 10:
+        events = events[-10:]
+
+    json_response = []
+    for event in events:
+        json_response.append(create_event_response(event))
+
+    return HttpResponseForbidden(to_json({'events': json_response}))
+
+
 def is_android_client(request):
     return 'android' in request.HTTP_USER_AGENT
 
@@ -140,7 +163,7 @@ def check_user_authentication(cookie):
 
 
 def create_event_response(event_object):
-    date_struct = {['year': event_object.timestamp.year, 'month': event_object.timestamp.month,
+    date_struct = {'year': event_object.timestamp.year, 'month': event_object.timestamp.month,
                    'day': event_object.timestamp.day, 'hour': event_object.timestamp.hour,
                    'minute': event_object.timestamp.minute, 'second': event_object.timestamp.second}
     raw_json = {'type': event_object.event_type, 'description': event_object.description,
