@@ -1,1 +1,1 @@
-web: python manage runserver 0.0.0.0:8888
+web: gunicorn goshawk.wsgi --log-file -
