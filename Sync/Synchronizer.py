@@ -46,10 +46,15 @@ class ArduinoListener(object):
         if data == 1:
             self.__cursor.execute(insertion_line, (None, 'Breach', 'Asset has been opened while alarm was armed',
                                                    timestamp, 'Critical'))
+            last_inserted_id = self.__cursor.lastrowid
+            # TODO: create take_snapshot method
+            # take_snapshot(last_inserted_id)
         elif data == 2:
             self.__cursor.execute(insertion_line, (None, 'Door knock',
                                                    'Vibrations on the door had been detected while alarm was armed',
                                                    timestamp, 'Information'))
+            last_inserted_id = self.__cursor.lastrowid()
+            # take_snapshot(last_inserted_id)
         self.__db_connection.commit()
         self.__mark_last_event_as_unerad()
 

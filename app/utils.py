@@ -7,6 +7,7 @@ import json
 
 cookie_length = 25
 secret = 'So2>QmjNktdi^u{}ujxAo3^dN'
+IMAGE_PATH = '/home/user/Pictures/'    # TODO: change path
 
 
 def rand_cookie():
