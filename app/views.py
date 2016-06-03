@@ -7,8 +7,8 @@ from utils import secret, rand_cookie, to_json, return_success, IMAGE_PATH
 
 
 def login(request):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
+    #if not is_android_client(request):
+    #   return HttpResponseForbidden('Not an android client')
     if not request.method == 'POST':
         return HttpResponseBadRequest('Not a POST-login-form')
 
@@ -36,9 +36,9 @@ def login(request):
     user_id = user.UID
     permission = Permissions.objects.get(user=user).user_type
 
-    if not request.session.test_cookie_worked():
-        return HttpResponseBadRequest('Test cookie did not work. Please enable cookies')
-    request.session.delete_test_cookie()
+    #if not request.session.test_cookie_worked():
+    #    return HttpResponseBadRequest('Test cookie did not work. Please enable cookies')
+    #request.session.delete_test_cookie()
 
     raw_json = {'Access Granted': 'True', 'uid': user_id, 'user_type': permission}
     response = HttpResponse(to_json(raw_json))
@@ -63,7 +63,7 @@ def create_new_user(request):
     permission_object = Permissions.filter(user=user_object)[0]
 
     user_type = permission_object.user_type
-    if user_type == 'Administrator':
+    if user_type == 'Admin':
         if add_user(request):
             return return_success()
         return HttpResponseBadRequest('One of the fileds is missing')
@@ -102,8 +102,8 @@ def register_mac(request, mac_address):
 
 
 def sync(request):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
+    #if not is_android_client(request):
+    #   return HttpResponseForbidden('Not an android client')
     if not request.method == 'GET':
         return HttpResponseBadRequest('Not a GET-sync-request')
   #  cookie = '4#2HU^Ke~x^88Y)gukF*v#&Z('           #  User for debug. delete afterwards
@@ -143,7 +143,7 @@ def get_last_events(request):
     for event in events:
         json_response.append(create_event_response(event))
 
-    return HttpResponseForbidden(to_json({'events': json_response}))
+    return HttpResponse(to_json({'events': json_response}))
 
 
 def get_snapshot(request, image_id):
@@ -170,7 +170,7 @@ def get_snapshot(request, image_id):
 
 
 def is_android_client(request):
-    return 'android' in request.HTTP_USER_AGENT
+    return 'android' in request.META['HTTP_USER_AGENT']
 
 
 def check_user_authentication(cookie):
