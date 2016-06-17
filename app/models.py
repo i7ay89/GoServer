@@ -2,8 +2,6 @@ from __future__ import unicode_literals
 from utils import cookie_length
 from django.db import models
 
-# Create your models here.
-
 
 class AppUsers(models.Model):
     UID = models.IntegerField(primary_key=True)
@@ -32,3 +30,9 @@ class MacToUser(models.Model):
 class UnreadEvents(models.Model):
     event = models.ForeignKey(Events)
     user = models.ForeignKey(AppUsers)
+
+
+class ArmsLog(models.Model):
+    user = models.ForeignKey(AppUsers, blank=False)
+    action = models.CharField(max_length=6, blank=False)
+    timestamp = models.DateTimeField(blank=False, editable=True)

@@ -3,7 +3,9 @@ from django.http import HttpResponseForbidden
 from django.http import HttpResponseBadRequest
 from .models import AppUsers, Permissions, MacToUser, UnreadEvents, Events
 from hashlib import md5
-from utils import secret, rand_cookie, to_json, return_success, IMAGE_PATH
+import socket
+import struct
+from utils import secret, rand_cookie, to_json, return_success, IMAGE_PATH, get_self_address
 
 
 def login(request):
@@ -88,11 +90,17 @@ def add_user(request):
     return False
 
 
-def register_mac(request, mac_address):
+def register_mac(request):
+    if not is_android_client(request):
+        return HttpResponseForbidden('Not an android client')
+    if not request.method == 'POST':
+        return HttpResponseBadRequest('Not a POST-login-form')
     cookie = request.COOKIES['auth']
     user_is_authenticated, reason = check_user_authentication(cookie)
     if not user_is_authenticated:
         return HttpResponseForbidden(reason)
+
+    mac_address = request.POST.get('mac', None)
     user = AppUsers.objects.filter(cookie=cookie)[0]
     entry, created = MacToUser.objects.update_or_create(user=user,
                                                         defaults={'mac-address': mac_address.upper(),
@@ -183,6 +191,48 @@ def check_user_authentication(cookie):
         return True, ''
 
     return False, 'Cookie is either invalid or expired'
+
+
+def arm(request):
+    if not is_android_client(request):
+        return HttpResponseForbidden('Not an android client')
+    if not request.method == 'POST':
+        return HttpResponseBadRequest('Not a POST-login-form')
+
+    cookie = request.COOKIES['auth']
+    user_is_authenticated, reason = check_user_authentication(cookie)
+    if not user_is_authenticated:
+        return HttpResponseForbidden(reason)
+
+    uid = AppUsers.objects.filter(cookie=cookie)[0]
+    sync_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sync_address = (get_self_address(), '9898')
+
+    data_to_send = struct.pack('BB', 100, uid)
+
+    sync_socket.sendto(data_to_send, sync_address)
+    sync_socket.close()
+
+
+def unarm(request):
+    if not is_android_client(request):
+        return HttpResponseForbidden('Not an android client')
+    if not request.method == 'POST':
+        return HttpResponseBadRequest('Not a POST-login-form')
+
+    cookie = request.COOKIES['auth']
+    user_is_authenticated, reason = check_user_authentication(cookie)
+    if not user_is_authenticated:
+        return HttpResponseForbidden(reason)
+
+    uid = AppUsers.objects.filter(cookie=cookie)[0]
+    sync_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sync_address = (get_self_address(), '9898')
+
+    data_to_send = struct.pack('BB', 0, uid)
+
+    sync_socket.sendto(data_to_send, sync_address)
+    sync_socket.close()
 
 
 def create_event_response(event_object):

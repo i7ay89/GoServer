@@ -1,8 +1,7 @@
-__author__ = 'user'
-
 from django.http import HttpResponse
 import random
 import json
+import socket
 
 
 cookie_length = 25
@@ -33,3 +32,14 @@ def to_json(json_data_dictionary):
 
 def return_success():
     return HttpResponse(to_json({'Success': 1}))
+
+
+def get_self_address():
+    test_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    test_socket.connect(('8.8.8.8', 80))
+
+    self_address = test_socket.getsockname()[0]
+
+    test_socket.close()
+
+    return self_address

@@ -5,6 +5,7 @@ import struct
 import sys
 
 BUFFER_SIZE = 1024
+IS_ARMED = True
 
 
 class ArduinoListener(object):
@@ -36,27 +37,41 @@ class ArduinoListener(object):
     def run_server(self):
         while True:
             data, address = self.__sock.recvfrom(BUFFER_SIZE)
-            data = struct.unpack('B', data)[0]
+            print data
             if data:
-                self.__handle_alert(data)
+                data = struct.unpack('BB', data)
+                alert_type = data[0]
+                uid = data[1]
+                self.__handle_alert(alert_type, uid)
 
-    def __handle_alert(self, data):
+    def __handle_alert(self, alert_type, uid):
+        global IS_ARMED
         timestamp = datetime.datetime.now()
-        insertion_line = 'INSERT INTO app_events VALUES (?, ?, ?, ?, ?)'
-        if data == 1:
-            self.__cursor.execute(insertion_line, (None, 'Breach', 'Asset has been opened while alarm was armed',
-                                                   timestamp, 'Critical'))
+        # TODO: Fix arms log insertion
+        event_insertion_line = 'INSERT INTO app_events VALUES (?, ?, ?, ?, ?)'
+        arms_log_insertion_line = 'INSERT INTO app_armslog VALUES (?, ?, ?, ?)'
+        if alert_type == 0:
+            IS_ARMED = False
+            self.__cursor.execute(arms_log_insertion_line, (None, 'Unarmed', timestamp, uid))
+        elif alert_type == 1 and IS_ARMED:
+            self.__cursor.execute(event_insertion_line, (None, 'Breach', 'Asset has been opened while alarm was armed',
+                                  timestamp, 'Critical'))
             last_inserted_id = self.__cursor.lastrowid
             # TODO: create take_snapshot method
             # take_snapshot(last_inserted_id)
-        elif data == 2:
-            self.__cursor.execute(insertion_line, (None, 'Door knock',
-                                                   'Vibrations on the door had been detected while alarm was armed',
-                                                   timestamp, 'Information'))
+            self.__mark_last_event_as_unerad()
+        elif alert_type == 2 and IS_ARMED:
+            self.__cursor.execute(event_insertion_line, (None, 'Door knock',
+                                  'Vibrations on the door had been detected while alarm was armed', timestamp,
+                                                         'Information'))
             last_inserted_id = self.__cursor.lastrowid()
             # take_snapshot(last_inserted_id)
+            self.__mark_last_event_as_unerad()
+        elif alert_type == 100:
+            IS_ARMED = True
+            self.__cursor.execute(arms_log_insertion_line, (None, 'Armed', timestamp, uid))
+
         self.__db_connection.commit()
-        self.__mark_last_event_as_unerad()
 
     def __mark_last_event_as_unerad(self):
         last_event_id = self.__cursor.execute('SELECT id FROM app_events ORDER BY id DESC LIMIT 1').fetchone()[0]
@@ -64,7 +79,6 @@ class ArduinoListener(object):
 
         for user in users_list:
             self.__cursor.execute('INSERT INTO app_unreadevents VALUES (?, ?, ?)', (None, last_event_id, user[0]))
-        self.__db_connection.commit()
 
 
 def parse_configuration_file():
@@ -74,7 +88,7 @@ def parse_configuration_file():
         print 'sync.conf is missing'
         sys.exit(-1)
 
-    configuration = conf_file.read()
+    configuration = conf_file.read().split('\n')
     conf_file.close()
     configuration_fields = {}
 
@@ -86,5 +100,12 @@ def parse_configuration_file():
         configuration_fields[key] = value
     return configuration_fields
 
-listener = ArduinoListener()
+configuration = parse_configuration_file()
+
+port = int(configuration.get('PORT', '9898'))
+db_path = configuration.get('DB_PATH', '../db.sqlite3')
+images_path = configuration.get('IMAGES_PATH', '/home/user/GoServer/images/')
+
+listener = ArduinoListener(listening_port=port, db_name=db_path)
+
 listener.run_server()
