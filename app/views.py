@@ -5,7 +5,7 @@ from .models import AppUsers, Permissions, MacToUser, UnreadEvents, Events
 from hashlib import md5
 import socket
 import struct
-from utils import secret, rand_cookie, to_json, return_success, IMAGE_PATH, get_self_address
+from utils import secret, rand_cookie, to_json, return_success, IMAGE_PATH, get_self_address, HttpResponseServerError
 
 
 def login(request):
@@ -194,8 +194,10 @@ def check_user_authentication(cookie):
 
 
 def arm(request):
+    '''
     if not is_android_client(request):
         return HttpResponseForbidden('Not an android client')
+    '''
     if not request.method == 'POST':
         return HttpResponseBadRequest('Not a POST-login-form')
 
@@ -204,14 +206,19 @@ def arm(request):
     if not user_is_authenticated:
         return HttpResponseForbidden(reason)
 
-    uid = AppUsers.objects.filter(cookie=cookie)[0]
-    sync_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sync_address = (get_self_address(), '9898')
+    uid = AppUsers.objects.filter(cookie=cookie)[0].UID
+    try:
+        sync_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sync_address = (get_self_address(), 9898)
 
-    data_to_send = struct.pack('BB', 100, uid)
+        data_to_send = struct.pack('BB', 100, uid)
 
-    sync_socket.sendto(data_to_send, sync_address)
-    sync_socket.close()
+        sync_socket.sendto(data_to_send, sync_address)
+        sync_socket.close()
+    except Exception as e:
+        print e
+        return HttpResponseServerError()
+    return return_success()
 
 
 def unarm(request):
@@ -226,14 +233,17 @@ def unarm(request):
         return HttpResponseForbidden(reason)
 
     uid = AppUsers.objects.filter(cookie=cookie)[0]
-    sync_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sync_address = (get_self_address(), '9898')
+    try:
+        sync_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sync_address = (get_self_address(), 9898)
 
-    data_to_send = struct.pack('BB', 0, uid)
+        data_to_send = struct.pack('BB', 0, uid)
 
-    sync_socket.sendto(data_to_send, sync_address)
-    sync_socket.close()
-
+        sync_socket.sendto(data_to_send, sync_address)
+        sync_socket.close()
+    except:
+        return HttpResponseServerError()
+    return return_success()
 
 def create_event_response(event_object):
     date_struct = {'year': event_object.timestamp.year, 'month': event_object.timestamp.month,

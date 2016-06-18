@@ -43,3 +43,7 @@ def get_self_address():
     test_socket.close()
 
     return self_address
+
+
+class HttpResponseServerError(HttpResponse):
+    status_code = 500
