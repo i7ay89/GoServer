@@ -12,4 +12,5 @@ urlpatterns = [
     url(r'snapshots/(?P<image_id>[0-9]+)$', views.get_snapshot, name='get_snapshot'),
     url(r'^arm$', views.arm, name='arm'),
     url(r'^unarm$', views.unarm, name='unarm'),
+    url(r'^status$', views.get_status, name='status'),
 ]

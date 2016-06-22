@@ -5,7 +5,6 @@ import struct
 import sys
 
 BUFFER_SIZE = 1024
-IS_ARMED = True
 
 
 class ArduinoListener(object):
@@ -19,6 +18,7 @@ class ArduinoListener(object):
 
         self.__db_connection = sqlite3.connect(self.__db_name)
         self.__cursor = self.__db_connection.cursor()
+        self.__verify_armed_table()
 
     def __del__(self):
         try:
@@ -45,22 +45,22 @@ class ArduinoListener(object):
                 self.__handle_alert(alert_type, uid)
 
     def __handle_alert(self, alert_type, uid):
-        global IS_ARMED
+        is_armed = self.__cursor.execute('SELECT armed FROM app_armed').fetchone()[0]
         timestamp = datetime.datetime.now()
         # TODO: Fix arms log insertion
         event_insertion_line = 'INSERT INTO app_events VALUES (?, ?, ?, ?, ?)'
         arms_log_insertion_line = 'INSERT INTO app_armslog VALUES (?, ?, ?, ?)'
         if alert_type == 0:
-            IS_ARMED = False
+            self.__cursor.execute('UPDATE app_armed SET armed=0')
             self.__cursor.execute(arms_log_insertion_line, (None, 'Unarmed', timestamp, uid))
-        elif alert_type == 1 and IS_ARMED:
+        elif alert_type == 1 and is_armed:
             self.__cursor.execute(event_insertion_line, (None, 'Breach', 'Asset has been opened while alarm was armed',
                                   timestamp, 'Critical'))
             last_inserted_id = self.__cursor.lastrowid
             # TODO: create take_snapshot method
             # take_snapshot(last_inserted_id)
             self.__mark_last_event_as_unerad()
-        elif alert_type == 2 and IS_ARMED:
+        elif alert_type == 2 and is_armed:
             self.__cursor.execute(event_insertion_line, (None, 'Door knock',
                                   'Vibrations on the door had been detected while alarm was armed', timestamp,
                                                          'Information'))
@@ -68,7 +68,7 @@ class ArduinoListener(object):
             # take_snapshot(last_inserted_id)
             self.__mark_last_event_as_unerad()
         elif alert_type == 100:
-            IS_ARMED = True
+            self.__cursor.execute('UPDATE app_armed SET armed=1')
             self.__cursor.execute(arms_log_insertion_line, (None, 'Armed', timestamp, uid))
 
         self.__db_connection.commit()
@@ -80,6 +80,16 @@ class ArduinoListener(object):
         for user in users_list:
             self.__cursor.execute('INSERT INTO app_unreadevents VALUES (?, ?, ?)', (None, last_event_id, user[0]))
 
+    def __verify_armed_table(self):
+        count = self.__cursor.execute('SELECT COUNT(*) FROM app_armed').fetchone()[0]
+        if count < 1:
+            self.__cursor.execute('INSERT INTO app_armed VALUES(?, ?)', (None, 0))
+            self.__db_connection.commit()
+        elif count > 1:
+            while count != 1:
+                self.__cursor.execute('DELETE FROM app_armed WHERE id=(SELECT MAX(id) FROM app_armed)')
+                self.__db_connection.commit()
+                count = self.__cursor.execute('SELECT COUNT(*) FROM app_armed')[0]
 
 def parse_configuration_file():
     try:
@@ -99,6 +109,7 @@ def parse_configuration_file():
         value = line.split('=')[1]
         configuration_fields[key] = value
     return configuration_fields
+
 
 configuration = parse_configuration_file()
 

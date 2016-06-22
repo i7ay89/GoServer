@@ -1,7 +1,7 @@
 from django.http import HttpResponse
 from django.http import HttpResponseForbidden
 from django.http import HttpResponseBadRequest
-from .models import AppUsers, Permissions, MacToUser, UnreadEvents, Events
+from .models import AppUsers, Permissions, MacToUser, UnreadEvents, Events, Armed
 from hashlib import md5
 import socket
 import struct
@@ -199,7 +199,7 @@ def arm(request):
         return HttpResponseForbidden('Not an android client')
     '''
     if not request.method == 'POST':
-        return HttpResponseBadRequest('Not a POST-login-form')
+        return HttpResponseBadRequest('Not a POST request')
 
     cookie = request.COOKIES['auth']
     user_is_authenticated, reason = check_user_authentication(cookie)
@@ -216,7 +216,6 @@ def arm(request):
         sync_socket.sendto(data_to_send, sync_address)
         sync_socket.close()
     except Exception as e:
-        print e
         return HttpResponseServerError()
     return return_success()
 
@@ -225,7 +224,7 @@ def unarm(request):
     if not is_android_client(request):
         return HttpResponseForbidden('Not an android client')
     if not request.method == 'POST':
-        return HttpResponseBadRequest('Not a POST-login-form')
+        return HttpResponseBadRequest('Not a POST request')
 
     cookie = request.COOKIES['auth']
     user_is_authenticated, reason = check_user_authentication(cookie)
@@ -244,6 +243,20 @@ def unarm(request):
     except:
         return HttpResponseServerError()
     return return_success()
+
+
+def get_status(request):
+#    if not is_android_client(request):
+#        return HttpResponseForbidden('Not an android client')
+    if not request.method == 'GET':
+        return HttpResponseBadRequest('Not a GET request')
+    status = Armed.objects.last().armed
+    if status:
+        response = to_json({'status': 'Armed'})
+    else:
+        response = to_json({'status': 'Unarmed'})
+    return HttpResponse(response)
+
 
 def create_event_response(event_object):
     date_struct = {'year': event_object.timestamp.year, 'month': event_object.timestamp.month,

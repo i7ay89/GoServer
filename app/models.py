@@ -36,3 +36,7 @@ class ArmsLog(models.Model):
     user = models.ForeignKey(AppUsers, blank=False)
     action = models.CharField(max_length=6, blank=False)
     timestamp = models.DateTimeField(blank=False, editable=True)
+
+
+class Armed(models.Model):
+    armed = models.BooleanField(blank=False)
