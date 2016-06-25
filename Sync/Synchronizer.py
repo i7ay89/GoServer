@@ -7,7 +7,7 @@ import sys
 BUFFER_SIZE = 1024
 
 
-class ArduinoListener(object):
+class AlertsListener(object):
     def __init__(self, listening_port=9898, db_name='../db.sqlite3'):
         self.__port = listening_port
         self.__db_name = db_name
@@ -117,6 +117,6 @@ port = int(configuration.get('PORT', '9898'))
 db_path = configuration.get('DB_PATH', '../db.sqlite3')
 images_path = configuration.get('IMAGES_PATH', '/home/user/GoServer/images/')
 
-listener = ArduinoListener(listening_port=port, db_name=db_path)
+listener = AlertsListener(listening_port=port, db_name=db_path)
 
 listener.run_server()

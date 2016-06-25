@@ -13,4 +13,5 @@ urlpatterns = [
     url(r'^arm$', views.arm, name='arm'),
     url(r'^unarm$', views.unarm, name='unarm'),
     url(r'^status$', views.get_status, name='status'),
+    url(r'^whos_home$', views.whos_home, name='whos_home'),
 ]

@@ -2,7 +2,10 @@ from django.http import HttpResponse
 import random
 import json
 import socket
-
+import os
+import subprocess
+import time
+import re
 
 cookie_length = 25
 secret = 'So2>QmjNktdi^u{}ujxAo3^dN'
@@ -47,3 +50,19 @@ def get_self_address():
 
 class HttpResponseServerError(HttpResponse):
     status_code = 500
+
+
+def validate_mac_format(mac_address):
+    mac_pattern = '(([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2})'
+    return re.match(mac_pattern, mac_address)
+
+def get_macs_on_nat():
+    nmap_execution = 'nmap -sP {}/24 > /dev/null'.format(get_self_address())
+    os.system(nmap_execution)
+    #time.sleep(2)
+    arp_command = subprocess.Popen(['arp', '-a'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output = arp_command.communicate()[0]
+    mac_pattern = '(([0-9a-f]{2}:){5}[0-9a-f]{2})'
+    results = re.findall(mac_pattern, output, re.I)
+    macs = [result[0] for result in results]
+    return macs

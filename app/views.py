@@ -1,16 +1,14 @@
-from django.http import HttpResponse
 from django.http import HttpResponseForbidden
 from django.http import HttpResponseBadRequest
 from .models import AppUsers, Permissions, MacToUser, UnreadEvents, Events, Armed
 from hashlib import md5
-import socket
 import struct
-from utils import secret, rand_cookie, to_json, return_success, IMAGE_PATH, get_self_address, HttpResponseServerError
+from utils import *
 
 
 def login(request):
-    #if not is_android_client(request):
-    #   return HttpResponseForbidden('Not an android client')
+    if not is_android_client(request):
+       return HttpResponseForbidden('Not an android client')
     if not request.method == 'POST':
         return HttpResponseBadRequest('Not a POST-login-form')
 
@@ -28,8 +26,7 @@ def login(request):
     password_hash = hash_creator.hexdigest()
     user = AppUsers.objects.get(name=username)
     if password_hash != user.password_hash:
-        return HttpResponseForbidden('Invalid username or password\nhash: {}\ndb_hash: {}'.format(password_hash,
-                                                                                                  user.password_hash))
+        return HttpResponseForbidden('Invalid username or password')
 
     cookie = rand_cookie()
     user.cookie = cookie
@@ -37,10 +34,6 @@ def login(request):
 
     user_id = user.UID
     permission = Permissions.objects.get(user=user).user_type
-
-    #if not request.session.test_cookie_worked():
-    #    return HttpResponseBadRequest('Test cookie did not work. Please enable cookies')
-    #request.session.delete_test_cookie()
 
     raw_json = {'Access Granted': 'True', 'uid': user_id, 'user_type': permission}
     response = HttpResponse(to_json(raw_json))
@@ -101,20 +94,22 @@ def register_mac(request):
         return HttpResponseForbidden(reason)
 
     mac_address = request.POST.get('mac', None)
+    if not validate_mac_format(mac_address):
+        return HttpResponseBadRequest('Incorrect MAC format')
     user = AppUsers.objects.filter(cookie=cookie)[0]
     entry, created = MacToUser.objects.update_or_create(user=user,
-                                                        defaults={'mac-address': mac_address.upper(),
+                                                        defaults={'mac-address': mac_address.lower(),
                                                                   'user': user})
     entry.save()
     return return_success()
 
 
 def sync(request):
-    #if not is_android_client(request):
-    #   return HttpResponseForbidden('Not an android client')
+    if not is_android_client(request):
+        return HttpResponseForbidden('Not an android client')
     if not request.method == 'GET':
         return HttpResponseBadRequest('Not a GET-sync-request')
-  #  cookie = '4#2HU^Ke~x^88Y)gukF*v#&Z('           #  User for debug. delete afterwards
+
     cookie = request.COOKIES.get('auth', None)
     user_is_authenticated, reason = check_user_authentication(cookie)
     if not user_is_authenticated:
@@ -132,7 +127,6 @@ def sync(request):
 
 
 def get_last_events(request):
-    '''
     if not is_android_client(request):
         return HttpResponseForbidden('Not an android client')
     if not request.method == 'GET':
@@ -142,7 +136,7 @@ def get_last_events(request):
     user_is_authenticated, reason = check_user_authentication(cookie)
     if not user_is_authenticated:
         return HttpResponseForbidden(reason)
-    '''
+
     events = Events.objects.all()
     if len(events) > 10:
         events = events[-10:]
@@ -155,17 +149,15 @@ def get_last_events(request):
 
 
 def get_snapshot(request, image_id):
-    '''
     if not is_android_client(request):
         return HttpResponseForbidden('Not an android client')
     if not request.method == 'GET':
         return HttpResponseBadRequest('Not a GET-sync-request')
-        #  cookie = '4#2HU^Ke~x^88Y)gukF*v#&Z('           #  User for debug. delete afterwards
     cookie = request.COOKIES.get('auth', None)
     user_is_authenticated, reason = check_user_authentication(cookie)
     if not user_is_authenticated:
         return HttpResponseForbidden(reason)
-    '''
+
     try:
         img_file = open(IMAGE_PATH + image_id + '.png', 'rb')
         img = img_file.read()
@@ -194,10 +186,8 @@ def check_user_authentication(cookie):
 
 
 def arm(request):
-    '''
     if not is_android_client(request):
         return HttpResponseForbidden('Not an android client')
-    '''
     if not request.method == 'POST':
         return HttpResponseBadRequest('Not a POST request')
 
@@ -246,8 +236,8 @@ def unarm(request):
 
 
 def get_status(request):
-#    if not is_android_client(request):
-#        return HttpResponseForbidden('Not an android client')
+    if not is_android_client(request):
+        return HttpResponseForbidden('Not an android client')
     if not request.method == 'GET':
         return HttpResponseBadRequest('Not a GET request')
     status = Armed.objects.last().armed
@@ -256,6 +246,21 @@ def get_status(request):
     else:
         response = to_json({'status': 'Unarmed'})
     return HttpResponse(response)
+
+
+def whos_home(request):
+    if not is_android_client(request):
+        return HttpResponseForbidden('Not an android client')
+    if not request.method == 'GET':
+        return HttpResponseBadRequest('Not a GET request')
+    macs_at_home = get_macs_on_nat()
+    all_mac_table_objects = MacToUser.objects.all()
+    users_at_home = []
+    for mac_object in all_mac_table_objects:
+        if mac_object.mac_address in macs_at_home:
+            users_at_home.append({'name': mac_object.user.name, 'UID': mac_object.user.UID})
+
+    return HttpResponse(to_json({'Users': users_at_home}))
 
 
 def create_event_response(event_object):
