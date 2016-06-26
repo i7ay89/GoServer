@@ -8,7 +8,7 @@ from utils import *
 
 def login(request):
     if not is_android_client(request):
-       return HttpResponseForbidden('Not an android client')
+        return HttpResponseForbidden('Not an android client')
     if not request.method == 'POST':
         return HttpResponseBadRequest('Not a POST-login-form')
 
@@ -44,16 +44,11 @@ def login(request):
 
 
 def create_new_user(request):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
-    if not request.method == 'POST':
-        return HttpResponseBadRequest('Not a POST-login-form')
+    valid, response = is_request_valid(request, method='POST')
+    if not valid:
+        return response
 
-    cookie = request.COOKIES['auth']
-    user_is_authenticated, reason = check_user_authentication(cookie)
-    if not user_is_authenticated:
-        return HttpResponseForbidden(reason)
-
+    cookie = request.COOKIES.get('auth', None)
     user_object = AppUsers.objects.filter(cookie=cookie)[0]
     permission_object = Permissions.filter(user=user_object)[0]
 
@@ -66,8 +61,6 @@ def create_new_user(request):
 
 
 def add_user(request):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
     username = request.POST.get('name', None)
     password = request.POST.get('password', None)
     permission = request.POST.get('permission', None)
@@ -84,14 +77,11 @@ def add_user(request):
 
 
 def register_mac(request):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
-    if not request.method == 'POST':
-        return HttpResponseBadRequest('Not a POST-login-form')
-    cookie = request.COOKIES['auth']
-    user_is_authenticated, reason = check_user_authentication(cookie)
-    if not user_is_authenticated:
-        return HttpResponseForbidden(reason)
+    valid, response = is_request_valid(request, method='POST')
+    if not valid:
+        return response
+
+    cookie = request.COOKIES.get('auth', None)
 
     mac_address = request.POST.get('mac', None)
     if not validate_mac_format(mac_address):
@@ -105,16 +95,11 @@ def register_mac(request):
 
 
 def sync(request):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
-    if not request.method == 'GET':
-        return HttpResponseBadRequest('Not a GET-sync-request')
+    valid, response = is_request_valid(request, method='GET')
+    if not valid:
+        return response
 
     cookie = request.COOKIES.get('auth', None)
-    user_is_authenticated, reason = check_user_authentication(cookie)
-    if not user_is_authenticated:
-        return HttpResponseForbidden(reason)
-
     user_object = AppUsers.objects.filter(cookie=cookie)[0]
 
     event_objects = UnreadEvents.objects.filter(user=user_object)
@@ -126,16 +111,10 @@ def sync(request):
     return HttpResponse(to_json({'events': json_response}))
 
 
-def get_last_events(request):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
-    if not request.method == 'GET':
-        return HttpResponseBadRequest('Not a GET-sync-request')
-        #  cookie = '4#2HU^Ke~x^88Y)gukF*v#&Z('           #  User for debug. delete afterwards
-    cookie = request.COOKIES.get('auth', None)
-    user_is_authenticated, reason = check_user_authentication(cookie)
-    if not user_is_authenticated:
-        return HttpResponseForbidden(reason)
+def get_recent_events(request):
+    valid, response = is_request_valid(request, method='GET')
+    if not valid:
+        return response
 
     events = Events.objects.all()
     if len(events) > 10:
@@ -149,14 +128,9 @@ def get_last_events(request):
 
 
 def get_snapshot(request, image_id):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
-    if not request.method == 'GET':
-        return HttpResponseBadRequest('Not a GET-sync-request')
-    cookie = request.COOKIES.get('auth', None)
-    user_is_authenticated, reason = check_user_authentication(cookie)
-    if not user_is_authenticated:
-        return HttpResponseForbidden(reason)
+    valid, response = is_request_valid(request, method='GET')
+    if not valid:
+        return response
 
     try:
         img_file = open(IMAGE_PATH + image_id + '.png', 'rb')
@@ -169,33 +143,12 @@ def get_snapshot(request, image_id):
         return response
 
 
-def is_android_client(request):
-    return 'android' in request.META['HTTP_USER_AGENT']
-
-
-def check_user_authentication(cookie):
-    if not cookie:
-        return False, 'No cookie set'
-
-    cookies_exists = AppUsers.objects.filter(cookie=cookie)[0]
-
-    if cookies_exists:
-        return True, ''
-
-    return False, 'Cookie is either invalid or expired'
-
-
 def arm(request):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
-    if not request.method == 'POST':
-        return HttpResponseBadRequest('Not a POST request')
+    valid, response = is_request_valid(request, method='POST')
+    if not valid:
+        return response
 
-    cookie = request.COOKIES['auth']
-    user_is_authenticated, reason = check_user_authentication(cookie)
-    if not user_is_authenticated:
-        return HttpResponseForbidden(reason)
-
+    cookie = request.COOKIES.get('auth', None)
     uid = AppUsers.objects.filter(cookie=cookie)[0].UID
     try:
         sync_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -210,18 +163,13 @@ def arm(request):
     return return_success()
 
 
-def unarm(request):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
-    if not request.method == 'POST':
-        return HttpResponseBadRequest('Not a POST request')
+def disarm(request):
+    valid, response = is_request_valid(request, method='POST')
+    if not valid:
+        return response
 
-    cookie = request.COOKIES['auth']
-    user_is_authenticated, reason = check_user_authentication(cookie)
-    if not user_is_authenticated:
-        return HttpResponseForbidden(reason)
-
-    uid = AppUsers.objects.filter(cookie=cookie)[0]
+    cookie = request.COOKIES.get('auth', None)
+    uid = AppUsers.objects.filter(cookie=cookie)[0].UID
     try:
         sync_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sync_address = (get_self_address(), 9898)
@@ -236,10 +184,10 @@ def unarm(request):
 
 
 def get_status(request):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
-    if not request.method == 'GET':
-        return HttpResponseBadRequest('Not a GET request')
+    valid, response = is_request_valid(request)
+    if not valid:
+        return response
+
     status = Armed.objects.last().armed
     if status:
         response = to_json({'status': 'Armed'})
@@ -249,18 +197,33 @@ def get_status(request):
 
 
 def whos_home(request):
-    if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
-    if not request.method == 'GET':
-        return HttpResponseBadRequest('Not a GET request')
+    valid, response = is_request_valid(request)
+    if not valid:
+        return response
     macs_at_home = get_macs_on_nat()
     all_mac_table_objects = MacToUser.objects.all()
     users_at_home = []
     for mac_object in all_mac_table_objects:
         if mac_object.mac_address in macs_at_home:
-            users_at_home.append({'name': mac_object.user.name, 'UID': mac_object.user.UID})
+            users_at_home.append({'Name': mac_object.user.name, 'UID': mac_object.user.UID})
 
     return HttpResponse(to_json({'Users': users_at_home}))
+
+
+def is_android_client(request):
+    return 'android' in request.META['HTTP_USER_AGENT'].lower()
+
+
+def check_user_authentication(cookie):
+    if not cookie:
+        return False, 'No cookie set'
+
+    cookies_exists = AppUsers.objects.filter(cookie=cookie)[0]
+
+    if cookies_exists:
+        return True, ''
+
+    return False, 'Cookie is either invalid or expired'
 
 
 def create_event_response(event_object):
@@ -271,3 +234,17 @@ def create_event_response(event_object):
                 'timestamp': date_struct, 'severity': event_object.severity}
 
     return raw_json
+
+
+def is_request_valid(request, method='GET'):
+    #if not is_android_client(request):
+    #    return False, HttpResponseForbidden('Not an android client')
+    if method == 'GET' and not request.method == 'GET':
+        return False, HttpResponseBadRequest('Not a GET request')
+    elif method == 'POST' and not request.method == 'POST':
+        return False, HttpResponseBadRequest('Not a POST form')
+    cookie = request.COOKIES.get('auth', None)
+    user_is_authenticated, reason = check_user_authentication(cookie)
+    if not user_is_authenticated:
+        return False, HttpResponseForbidden(reason)
+    return True, None

@@ -8,10 +8,10 @@ urlpatterns = [
     url(r'^register_mac$', views.register_mac, name='register_mac'),
     url(r'^sync$', views.sync, name='sync'),
     url(r'^create_new_user$', views.create_new_user, name='create_new_user'),
-    url(r'^get_last_events$', views.get_last_events, name='get_last_events'),
+    url(r'^get_recent_events', views.get_recent_events, name='get_recent_events'),
     url(r'snapshots/(?P<image_id>[0-9]+)$', views.get_snapshot, name='get_snapshot'),
     url(r'^arm$', views.arm, name='arm'),
-    url(r'^unarm$', views.unarm, name='unarm'),
+    url(r'^disarm', views.disarm, name='disarm'),
     url(r'^status$', views.get_status, name='status'),
     url(r'^whos_home$', views.whos_home, name='whos_home'),
 ]

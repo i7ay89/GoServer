@@ -37,7 +37,6 @@ class AlertsListener(object):
     def run_server(self):
         while True:
             data, address = self.__sock.recvfrom(BUFFER_SIZE)
-            print data
             if data:
                 data = struct.unpack('BB', data)
                 alert_type = data[0]
