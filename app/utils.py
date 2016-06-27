@@ -1,10 +1,10 @@
 from django.http import HttpResponse
+from hashlib import md5
 import random
 import json
 import socket
 import os
 import subprocess
-import time
 import re
 
 cookie_length = 25
@@ -27,6 +27,14 @@ def rand_cookie():
         cookie += chr(character)
 
     return cookie
+
+
+def get_password_hash(username, password):
+    hash_creator = md5()
+    hash_creator.update(username)
+    hash_creator.update(password)
+    hash_creator.update(secret)
+    return hash_creator.hexdigest()
 
 
 def to_json(json_data_dictionary):
@@ -59,7 +67,6 @@ def validate_mac_format(mac_address):
 def get_macs_on_nat():
     nmap_execution = 'nmap -sP {}/24 > /dev/null'.format(get_self_address())
     os.system(nmap_execution)
-    #time.sleep(2)
     arp_command = subprocess.Popen(['arp', '-a'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output = arp_command.communicate()[0]
     mac_pattern = '(([0-9a-f]{2}:){5}[0-9a-f]{2})'

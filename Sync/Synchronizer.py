@@ -46,7 +46,6 @@ class AlertsListener(object):
     def __handle_alert(self, alert_type, uid):
         is_armed = self.__cursor.execute('SELECT armed FROM app_armed').fetchone()[0]
         timestamp = datetime.datetime.now()
-        # TODO: Fix arms log insertion
         event_insertion_line = 'INSERT INTO app_events VALUES (?, ?, ?, ?, ?)'
         arms_log_insertion_line = 'INSERT INTO app_armslog VALUES (?, ?, ?, ?)'
         if alert_type == 0:

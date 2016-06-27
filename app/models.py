@@ -7,7 +7,7 @@ class AppUsers(models.Model):
     UID = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=20)
     password_hash = models.CharField(max_length=32)
-    cookie = models.CharField(max_length=cookie_length, default=None, blank=True)
+    cookie = models.CharField(max_length=cookie_length, default='', blank=True)
 
 
 class Permissions(models.Model):

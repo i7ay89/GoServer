@@ -1,7 +1,6 @@
 from django.http import HttpResponseForbidden
 from django.http import HttpResponseBadRequest
 from .models import AppUsers, Permissions, MacToUser, UnreadEvents, Events, Armed
-from hashlib import md5
 import struct
 from utils import *
 
@@ -18,12 +17,7 @@ def login(request):
     if not username or not password:
         return HttpResponseBadRequest('Username or password is missing')
 
-    hash_creator = md5()
-    hash_creator.update(username)
-    hash_creator.update(password)
-    hash_creator.update(secret)
-
-    password_hash = hash_creator.hexdigest()
+    password_hash = get_password_hash(username, password)
     user = AppUsers.objects.get(name=username)
     if password_hash != user.password_hash:
         return HttpResponseForbidden('Invalid username or password')
@@ -50,13 +44,13 @@ def create_new_user(request):
 
     cookie = request.COOKIES.get('auth', None)
     user_object = AppUsers.objects.filter(cookie=cookie)[0]
-    permission_object = Permissions.filter(user=user_object)[0]
+    permission_object = Permissions.objects.filter(user=user_object)[0]
 
     user_type = permission_object.user_type
     if user_type == 'Admin':
         if add_user(request):
             return return_success()
-        return HttpResponseBadRequest('One of the fileds is missing')
+        return HttpResponseBadRequest('One of the fields is missing')
     return HttpResponseForbidden('User "{}" is not authorized to add new users'.format(user_object.name))
 
 
@@ -68,12 +62,65 @@ def add_user(request):
     if username and password and permission:
         uids = sorted(AppUsers.objects.values_list('UID', flat=True).all())
         new_uid = uids[-1] + 1
-        new_user = AppUsers(UID=new_uid, name=username, password=password)
+        new_user = AppUsers(UID=new_uid, name=username, password_hash=get_password_hash(username, password))
         new_user.save()
 
         Permissions(user=new_user, user_type=permission).save()
         return True
     return False
+
+
+def remove_user(request):
+    valid, response = is_request_valid(request, method='POST')
+    if not valid:
+        return response
+
+    cookie = request.COOKIES.get('auth', None)
+    user_object = AppUsers.objects.filter(cookie=cookie)[0]
+    permission_object = Permissions.objects.filter(user=user_object)[0]
+
+    user_type = permission_object.user_type
+
+    uid_to_delete = int(request.POST.get('uid', None))
+
+    if user_type != 'Admin':
+        return HttpResponseForbidden('User "{}" is not authorized to add new users'.format(user_object.name))
+
+    user_object_to_remove = AppUsers.objects.filter(UID=uid_to_delete)
+    if user_object_to_remove:
+        user_object_to_remove = user_object_to_remove[0]
+    else:
+        return HttpResponseBadRequest('No such UID')
+    user_object_to_remove.delete()
+    return_success()
+
+
+def get_all_users(request):
+    valid, response = is_request_valid(request, method='GET')
+    if not valid:
+        return response
+
+    users_list = []
+    user_object_list = AppUsers.objects.all()
+    for user_object in user_object_list:
+        users_list.append({'UID': user_object.UID, 'Name': user_object.name})
+
+    response = to_json({'Users': users_list})
+    return HttpResponse(response)
+
+
+def get_my_permission(request):
+    valid, response = is_request_valid(request, method='GET')
+    if not valid:
+        return response
+
+    cookie = request.COOKIES.get('auth', None)
+    user_object = AppUsers.objects.filter(cookie=cookie)[0]
+    permission_object = Permissions.objects.filter(user=user_object)[0]
+
+    user_type = permission_object.user_type
+    response = to_json({'UID': user_object.UID, 'Permission': user_type})
+    return HttpResponse(response)
 
 
 def register_mac(request):
