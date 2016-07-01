@@ -7,20 +7,20 @@ from utils import *
 
 def login(request):
     if not is_android_client(request):
-        return HttpResponseForbidden('Not an android client')
+        return HttpResponseForbidden()
     if not request.method == 'POST':
-        return HttpResponseBadRequest('Not a POST-login-form')
+        return HttpResponseBadRequest()
 
     username = request.POST.get('name', None)
     password = request.POST.get('password', None)
 
     if not username or not password:
-        return HttpResponseBadRequest('Username or password is missing')
+        return HttpResponseBadRequest()
 
     password_hash = get_password_hash(username, password)
     user = AppUsers.objects.get(name=username)
     if password_hash != user.password_hash:
-        return HttpResponseForbidden('Invalid username or password')
+        return HttpResponseForbidden()
 
     cookie = rand_cookie()
     user.cookie = cookie
@@ -50,8 +50,8 @@ def create_new_user(request):
     if user_type == 'Admin':
         if add_user(request):
             return return_success()
-        return HttpResponseBadRequest('One of the fields is missing')
-    return HttpResponseForbidden('User "{}" is not authorized to add new users'.format(user_object.name))
+        return HttpResponseBadRequest()
+    return HttpResponseForbidden()
 
 
 def add_user(request):
@@ -84,13 +84,13 @@ def remove_user(request):
     uid_to_delete = int(request.POST.get('uid', None))
 
     if user_type != 'Admin':
-        return HttpResponseForbidden('User "{}" is not authorized to add new users'.format(user_object.name))
+        return HttpResponseForbidden()
 
     user_object_to_remove = AppUsers.objects.filter(UID=uid_to_delete)
     if user_object_to_remove:
         user_object_to_remove = user_object_to_remove[0]
     else:
-        return HttpResponseBadRequest('No such UID')
+        return HttpResponseBadRequest()
     user_object_to_remove.delete()
     return_success()
 
@@ -132,7 +132,7 @@ def register_mac(request):
 
     mac_address = request.POST.get('mac', None)
     if not validate_mac_format(mac_address):
-        return HttpResponseBadRequest('Incorrect MAC format')
+        return HttpResponseBadRequest()
     user = AppUsers.objects.filter(cookie=cookie)[0]
     entry, created = MacToUser.objects.update_or_create(user=user,
                                                         defaults={'mac-address': mac_address.lower(),
@@ -165,7 +165,7 @@ def get_recent_events(request):
 
     events = Events.objects.all()
     if len(events) > 10:
-        events = events[-10:]
+        events = events[len(events)-10:]
 
     json_response = []
     for event in events:
@@ -287,11 +287,11 @@ def is_request_valid(request, method='GET'):
     #if not is_android_client(request):
     #    return False, HttpResponseForbidden('Not an android client')
     if method == 'GET' and not request.method == 'GET':
-        return False, HttpResponseBadRequest('Not a GET request')
+        return False, HttpResponseBadRequest()
     elif method == 'POST' and not request.method == 'POST':
-        return False, HttpResponseBadRequest('Not a POST form')
+        return False, HttpResponseBadRequest()
     cookie = request.COOKIES.get('auth', None)
     user_is_authenticated, reason = check_user_authentication(cookie)
     if not user_is_authenticated:
-        return False, HttpResponseForbidden(reason)
+        return False, HttpResponseForbidden()
     return True, None
