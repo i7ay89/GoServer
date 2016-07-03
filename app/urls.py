@@ -17,4 +17,5 @@ urlpatterns = [
     url(r'^whos_home$', views.whos_home, name='whos_home'),
     url(r'^users_list$', views.get_all_users, name='users_list'),
     url(r'^my_info$', views.get_my_permission, name='my_info'),
+    url(r'^set_code$', views.set_code, name='set_code'),
 ]

@@ -40,3 +40,7 @@ class ArmsLog(models.Model):
 
 class Armed(models.Model):
     armed = models.BooleanField(blank=False)
+
+
+class Code(models.Model):
+    code = models.IntegerField(blank=False, editable=True)

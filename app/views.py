@@ -1,6 +1,6 @@
 from django.http import HttpResponseForbidden
 from django.http import HttpResponseBadRequest
-from .models import AppUsers, Permissions, MacToUser, UnreadEvents, Events, Armed
+from .models import AppUsers, Permissions, MacToUser, UnreadEvents, Events, Armed, Code
 import struct
 from utils import *
 
@@ -201,7 +201,7 @@ def arm(request):
         sync_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sync_address = (get_self_address(), 9898)
 
-        data_to_send = struct.pack('BB', 100, uid)
+        data_to_send = struct.pack('B' * 6, 100, uid, 0, 0, 0, 0)
 
         sync_socket.sendto(data_to_send, sync_address)
         sync_socket.close()
@@ -221,13 +221,33 @@ def disarm(request):
         sync_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sync_address = (get_self_address(), 9898)
 
-        data_to_send = struct.pack('BB', 0, uid)
+        data_to_send = struct.pack('B' * 6, 0, uid, 0, 0, 0, 0)
 
         sync_socket.sendto(data_to_send, sync_address)
         sync_socket.close()
     except:
         return HttpResponseServerError()
     return return_success()
+
+
+def set_code(request):
+    valid, response = is_request_valid(request, method='POST')
+    if not valid:
+        return response
+    cookie = request.COOKIES.get('auth', None)
+    user_object = AppUsers.objects.filter(cookie=cookie)[0]
+    permission_object = Permissions.objects.filter(user=user_object)[0]
+
+    user_type = permission_object.user_type
+    if user_type == 'Admin':
+        code = request.POST.get('code', None)
+        if code and len(code) == 4:
+            code = int(code)
+            Code.objects.all().update(code=code)
+            for item in Code.objects.all():
+                item.save()
+            return return_success()
+    return HttpResponseForbidden()
 
 
 def get_status(request):

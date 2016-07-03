@@ -6,6 +6,7 @@ import socket
 import os
 import subprocess
 import re
+import time
 
 cookie_length = 25
 secret = 'So2>QmjNktdi^u{}ujxAo3^dN'
@@ -68,6 +69,7 @@ def get_macs_on_nat():
     nmap_execution = 'nmap -sP {}/24 > /dev/null'.format(get_self_address())
     os.system(nmap_execution)
     arp_command = subprocess.Popen(['arp', '-a'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    time.sleep(1)
     output = arp_command.communicate()[0]
     mac_pattern = '(([0-9a-f]{2}:){5}[0-9a-f]{2})'
     results = re.findall(mac_pattern, output, re.I)
