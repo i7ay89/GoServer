@@ -65,6 +65,7 @@ def validate_mac_format(mac_address):
     mac_pattern = '(([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2})'
     return re.match(mac_pattern, mac_address)
 
+
 def get_macs_on_nat():
     nmap_execution = 'nmap -sP {}/24 > /dev/null'.format(get_self_address())
     os.system(nmap_execution)

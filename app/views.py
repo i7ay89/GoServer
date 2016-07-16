@@ -180,7 +180,7 @@ def get_snapshot(request, image_id):
         return response
 
     try:
-        img_file = open(IMAGE_PATH + image_id + '.png', 'rb')
+        img_file = open(IMAGE_PATH + image_id + '.jpg', 'rb')
         img = img_file.read()
         img_file.close()
         response = HttpResponse(img, content_type='image/jpeg')

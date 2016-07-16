@@ -3,16 +3,19 @@ import sqlite3
 import datetime
 import struct
 import sys
+import urllib
 
 BUFFER_SIZE = 1024
 FIXED_PACKET_SIZE = 6
 
 
 class AlertsListener(object):
-    def __init__(self, listening_port=9898, db_name='../db.sqlite3'):
+    def __init__(self, listening_port=9898, db_name='../db.sqlite3', images_path='/home/user/test', camera_address=None):
         self.__port = listening_port
         self.__db_name = db_name
+        self.__camera_address = camera_address
         self._get_self_address()
+        self.__images_path = images_path
 
         self.__sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__sock.bind((self.__server_address, self.__port))
@@ -58,15 +61,14 @@ class AlertsListener(object):
             self.__cursor.execute(event_insertion_line, (None, 'Breach', 'Asset has been opened while alarm was armed',
                                   timestamp, 'Critical'))
             last_inserted_id = self.__cursor.lastrowid
-            # TODO: create take_snapshot method
-            # take_snapshot(last_inserted_id)
+            self.__take_snapshot(last_inserted_id)
             self.__mark_last_event_as_unerad()
         elif alert_type == 2 and is_armed:
             self.__cursor.execute(event_insertion_line, (None, 'Door knock',
                                   'Vibrations on the door had been detected while alarm was armed', timestamp,
                                                          'Information'))
             last_inserted_id = self.__cursor.lastrowid()
-            # take_snapshot(last_inserted_id)
+            self.__take_snapshot(last_inserted_id)
             self.__mark_last_event_as_unerad()
         elif alert_type == 3 and is_armed:
             inserted_code = self.__assemble_code(code)
@@ -87,6 +89,14 @@ class AlertsListener(object):
             code += key * (10 ** (3 - i))
             i += 1
         return code
+
+    def __take_snapshot(self, image_id):
+        snapshot_url = 'http://' + self.__camera_address + '/img/snapshot.cgi?size=5'
+        path = self.__images_path + '/' + str(image_id) + '.jpg'
+        try:
+            urllib.urlretrieve(snapshot_url, path)
+        except:
+            pass
 
     def __mark_last_event_as_unerad(self):
         last_event_id = self.__cursor.execute('SELECT id FROM app_events ORDER BY id DESC LIMIT 1').fetchone()[0]
@@ -143,7 +153,8 @@ configuration = parse_configuration_file()
 port = int(configuration.get('PORT', '9898'))
 db_path = configuration.get('DB_PATH', '../db.sqlite3')
 images_path = configuration.get('IMAGES_PATH', '/home/user/GoServer/images/')
+camera_address = configuration.get('CAMERA_ADDRESS', None)
 
-listener = AlertsListener(listening_port=port, db_name=db_path)
+listener = AlertsListener(listening_port=port, db_name=db_path, images_path=images_path, camera_address=camera_address)
 
 listener.run_server()
